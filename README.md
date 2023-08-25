@@ -17,7 +17,7 @@ Add the following to your docker-compose.yml
 ```yaml
 services:
   scraper:
-    image: lblod/scraper-service
+    image: lblod/scraper
     links:
       - database:database
     volumes:
