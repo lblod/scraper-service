@@ -16,8 +16,8 @@ The service will start downloading at the provided url and follow any links that
 Add the following to your docker-compose.yml
 ```yaml
 services:
-  lblod-scraper:
-    image: nvdk/lblod-scraper
+  scraper:
+    image: lblod/scraper-service
     links:
       - database:database
     volumes:
@@ -41,7 +41,7 @@ And add a delta rule in rules.js
     },
     callback: {
       method: 'POST',
-      url: 'http://lblod-scraper/delta',
+      url: 'http://scraper/delta',
     },
     options: {
       resourceFormat: 'v0.0.1',
