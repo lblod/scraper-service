@@ -135,7 +135,7 @@ def get_remote_data_object(collection_uri, remote_url):
     query_string = query_template.substitute(
         graph = sparql_escape_uri(DEFAULT_GRAPH),
         collection = sparql_escape_uri(collection_uri),
-        url = sparql_escape_uri(remote_url)
+        url = sparql_escape_uri(cleanUrl(remote_url))
     )
     results = query_sudo(query_string)
     bindings = results["results"]["bindings"]
