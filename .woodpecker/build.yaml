@@ -2,7 +2,7 @@ steps:
   push-latest:
     image: woodpeckerci/plugin-docker-buildx
     settings:
-      repo: nvdk/lblod-scraper
+      repo: ${CI_REPO}
       tags: latest
       purge: true
     secrets: [docker_username, docker_password]

@@ -5,6 +5,8 @@ from helpers import logger, generate_uuid
 from sudo_query import auth_update_sudo, update_sudo, query_sudo
 import uuid
 import datetime
+import re
+from urllib.parse import urldefrag
 
 from constants import DEFAULT_GRAPH, RESOURCE_BASE, FILE_STATUSES
 
@@ -14,6 +16,17 @@ def ensure_remote_data_object(collection, url):
         return rdo
     else:
         return create_remote_data_object(collection, url)
+
+def cleanUrl(url):
+    """
+    Workaround to avoid extracting the same url multiple times because a `jsessionid`
+    is set in the url. This is only relevant for urls using a Java backend.
+    todo check in the future if that's still the case, otherwise this could be completely removed.
+    Not that we also cleanup the hash, e.g http://foo.com#blabla, this shouldn't affect
+    extraction. We keep the other query parameters that are necessary for extraction.
+    """
+    url = urldefrag(url.strip()).url # remove eventual hash
+    return re.sub(";jsessionid=[a-zA-Z;0-9]*", "", url)
 
 def create_remote_data_object(collection, url):
     query_template = Template("""
@@ -31,7 +44,7 @@ def create_remote_data_object(collection, url):
         $uri mu:uuid $uuid;
              nie:url $url;
              dct:created $created;
-             dct:creator <http://lblod.data.gift/services/lblod-scraper>;
+             dct:creator <http://lblod.data.gift/services/scraper>;
              dct:modified $modified;
              adms:status $status.
       }
@@ -44,7 +57,7 @@ def create_remote_data_object(collection, url):
         graph = sparql_escape_uri(DEFAULT_GRAPH),
         uri = sparql_escape_uri(uri),
         uuid = sparql_escape_string(uuid),
-        url = sparql_escape_uri(url),
+        url = sparql_escape_uri(cleanUrl(url)),
         status = sparql_escape_uri(FILE_STATUSES['READY']),
         created = sparql_escape_datetime(created),
         modified = sparql_escape_datetime(created),
