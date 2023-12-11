@@ -72,43 +72,91 @@ def create_remote_data_object(collection, url):
         'status': FILE_STATUSES['READY']
     }
 
+def count_number_of_files_in_collection(collection_uri):
+        query_template = Template("""
+    PREFIX    adms: <http://www.w3.org/ns/adms#>
+    PREFIX    dct: <http://purl.org/dc/terms/>
+    SELECT (COUNT(?rdo) as ?numberOfFile)
+    WHERE {
+      GRAPH $graph {
+        $collection dct:hasPart ?rdo.
+        ?rdo adms:status $status_collected.
+      }
+    }
+    """)
+        query_string = query_template.substitute(
+            collection = sparql_escape_uri(collection_uri),
+            graph = sparql_escape_uri(DEFAULT_GRAPH),
+            status_collected = sparql_escape_uri(FILE_STATUSES['COLLECTED']),
+        )
+        results = query_sudo(query_string)
+        bindings = results["results"]["bindings"]
+        if len(bindings) == 1:
+            return int(bindings[0]["numberOfFile"]["value"])
+        else:
+          return 0
+
+def copy_files_to_results_container(collection_uri, results_container):
+    number_of_files = count_number_of_files_in_collection(collection_uri)
+    if number_of_files > 0:
+        offset = 0
+        query_template = Template("""
+        PREFIX    adms: <http://www.w3.org/ns/adms#>
+        PREFIX    mu: <http://mu.semte.ch/vocabularies/core/>
+        PREFIX    nie: <http://www.semanticdesktop.org/ontologies/2007/01/19/nie#>
+        PREFIX    dct: <http://purl.org/dc/terms/>
+        PREFIX    task: <http://redpencil.data.gift/vocabularies/tasks/>
+        PREFIX    nfo: <http://www.semanticdesktop.org/ontologies/2007/03/22/nfo#>
+        INSERT {
+           GRAPH $graph { $result_container task:hasFile ?rdo.  }
+        }
+       WHERE {
+          SELECT ?rdo WHERE {
+            GRAPH $graph {
+              $collection dct:hasPart ?rdo.
+              ?rdo adms:status $status_collected.
+            }
+         } ORDER BY ?rdo LIMIT 5000 offset $offset
+      } 
+    """)
+        while offset < number_of_files:
+            query_s = query_template.substitute(
+                graph = sparql_escape_uri(DEFAULT_GRAPH),
+                result_container = sparql_escape_uri(results_container),
+                status_collected = sparql_escape_uri(FILE_STATUSES['COLLECTED']),
+                collection = sparql_escape_uri(collection_uri),
+                offset = offset
+            )
+            update_sudo(query_s)
+            offset = offset + 5000
+
 def create_results_container(task_uri, collection_uri):
-    query_template = Template("""
+    create_container_query = Template("""
     PREFIX    adms: <http://www.w3.org/ns/adms#>
     PREFIX    mu: <http://mu.semte.ch/vocabularies/core/>
     PREFIX    nie: <http://www.semanticdesktop.org/ontologies/2007/01/19/nie#>
     PREFIX    dct: <http://purl.org/dc/terms/>
     PREFIX    task: <http://redpencil.data.gift/vocabularies/tasks/>
     PREFIX    nfo: <http://www.semanticdesktop.org/ontologies/2007/03/22/nfo#>
-    INSERT {
+    INSERT DATA {
       GRAPH $graph {
         $task task:resultsContainer $result_container.
         $result_container a nfo:DataContainer;
-                          mu:uuid $uuid;
-                          task:hasFile ?rdo.
-      }
-    }
-    WHERE {
-      GRAPH $graph {
-        $task a task:Task;
-              task:inputContainer ?container.
-        ?container task:hasHarvestingCollection $collection.
-        $collection dct:hasPart ?rdo.
-        ?rdo adms:status $status_collected.
+                          mu:uuid $uuid.
       }
     }
     """)
     uuid = generate_uuid()
     uri = RESOURCE_BASE.rstrip("/") + f"/data-containers/{uuid}"
-    query_s = query_template.substitute(
+    query_s = create_container_query.substitute(
         graph = sparql_escape_uri(DEFAULT_GRAPH),
         result_container = sparql_escape_uri(uri),
         uuid = sparql_escape_string(uuid),
-        status_collected = sparql_escape_uri(FILE_STATUSES['COLLECTED']),
-        collection = sparql_escape_uri(collection_uri),
         task = sparql_escape_uri(task_uri)
     )
     update_sudo(query_s)
+    copy_files_to_results_container(collection_uri, uri)
+
 """
 get remote data object in a harvesting collection that matches remote url. Expects 1 RDO
 """
