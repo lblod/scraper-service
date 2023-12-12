@@ -14,7 +14,9 @@ import gzip
 from .file import construct_insert_file_query, STORAGE_PATH
 from constants import DEFAULT_GRAPH, RESOURCE_BASE, TASK_STATUSES
 from .job import update_task_status, add_stats_to_task
-from .harvester import collection_has_collected_files, create_results_container
+from .harvester import collection_has_collected_files, create_results_container, get_previous_pages, remove_random_10_percent_of_list
+
+INCREMENTAL_RETRIEVAL = os.getenv("INCREMENTAL_RETRIEVAL") in ["yes", "on", "true", True, "1", 1]
 
 class Pipeline:
     timestamp = datetime.datetime.now()
@@ -25,7 +27,11 @@ class Pipeline:
             os.mkdir(self.storage_path)
 
     def open_spider(self, spider):
-        pass
+        if INCREMENTAL_RETRIEVAL:
+            previous_collected_pages = get_previous_pages(spider.task)
+            spider.previous_collected_pages = remove_random_10_percent_of_list(previous_collected_pages)
+        else:
+            spider.previous_collected_pages = []
 
     def close_spider(self, spider):
         try:
@@ -35,20 +41,20 @@ class Pipeline:
             else:
                 logger.error("spider closed without collecting files")
                 update_task_status(spider.task, TASK_STATUSES["FAILED"])
-                stats = spider.crawler.stats.get_stats()
-                if stats.get('log_count/ERROR') == 0:
-                    items = stats.get("item_scraped_count", 0)
-                    start_time = stats.get('start_time')
-                    end_time = stats.get('end_time')
-                    pages = stats.get("response_received_count", 0)
-                    depth = stats.get("request_depth_max", 0)
-                    add_stats_to_collection(spider.task, {
-                        "start_time": start_time,
-                        "end_time": end_time,
-                        "pages": pages,
-                        "items": items,
-                        "depth": depth
-                    })
+            stats = spider.crawler.stats.get_stats()
+            if stats.get('log_count/ERROR') == 0:
+                items = stats.get("item_scraped_count", 0)
+                start_time = stats.get('start_time')
+                end_time = stats.get('end_time')
+                pages = stats.get("response_received_count", 0)
+                depth = stats.get("request_depth_max", 0)
+                add_stats_to_collection(spider.task, {
+                    "start_time": start_time,
+                    "end_time": end_time,
+                    "pages": pages,
+                    "items": items,
+                    "depth": depth
+                })
         except Exception as e:
             logger.error(e)
             logger.error("failure while closing spider, attempting to set task to failed")

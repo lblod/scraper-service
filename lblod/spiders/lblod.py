@@ -6,7 +6,7 @@ from rdflib import Graph, Namespace
 from helpers import logger
 
 from lblod.items import Page
-from lblod.harvester import ensure_remote_data_object
+from lblod.harvester import ensure_remote_data_object, clean_url
 
 BESLUIT = Namespace("http://data.vlaanderen.be/ns/besluit#")
 LBBESLUIT = Namespace("http://lblod.data.gift/vocabularies/besluit/")
@@ -22,7 +22,7 @@ def doc_type_from_type_ofs(type_ofs):
             return 'https://data.vlaanderen.be/id/concept/BesluitDocumentType/3fa67785-ffdc-4b30-8880-2b99d97b4dee'
         elif '9d5bfaca-bbf2-49dd-a830-769f91a6377b' in type_of:
             return 'https://data.vlaanderen.be/id/concept/BesluitDocumentType/9d5bfaca-bbf2-49dd-a830-769f91a6377b'
-    return 'https://schema.org/WebPage'
+    return 'http://schema.org/WebPage'
 
 class LBLODSpider(Spider):
     name = "LBLODSpider"
@@ -53,7 +53,10 @@ class LBLODSpider(Spider):
             if any(value in property_value for value in interesting_properties):
                 if not href.endswith('.pdf'):
                     url = response.urljoin(href)
-                    ensure_remote_data_object(self.collection, url)
-                    yield response.follow(url)
+                    if not clean_url(url) in self.previous_collected_pages:
+                        ensure_remote_data_object(self.collection, url)
+                        yield response.follow(url)
+                    else:
+                        logger.info(f"ignoring previously harvested url {url}")
                 else:
                     logger.info(f'ignoring pdf link {href}')
