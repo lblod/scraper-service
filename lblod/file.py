@@ -49,7 +49,8 @@ INSERT  {
         $data_source_uri dct:modified $created.
         $data_source_uri a nfo:FileDataObject;
                          nfo:fileName $physical_name;
-                         nfo:fileSize $size.
+                         nfo:fileSize $size;
+                         dct:type $doc_type.
     }
 }
 WHERE {
@@ -59,6 +60,7 @@ WHERE {
     }
 }
 """)
+    doc_type = file["doc_type"] if file["doc_type"] else "http://xmlns.com/foaf/0.1/Document"
     return query_template.substitute(
         graph=sparql_escape_uri(graph),
         name=sparql_escape_string(file["name"]),
@@ -70,7 +72,8 @@ WHERE {
         physical_uuid=sparql_escape_string(physical_file["uuid"]),
         physical_name=sparql_escape_string(physical_file["name"]),
         data_source_uri=sparql_escape_uri(file["remote_data_object"]),
-        new_status=sparql_escape_uri(FILE_STATUSES["COLLECTED"])
+        new_status=sparql_escape_uri(FILE_STATUSES["COLLECTED"]),
+        doc_type=sparql_escape_uri(doc_type)
     )
 
 

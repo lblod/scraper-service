@@ -111,7 +111,8 @@ class Pipeline:
             "modified": item["file_created"], # currently unused
             "size": item["size"],
             "extension": item["extension"],
-            "remote_data_object": item["rdo"]["uri"]
+            "remote_data_object": item["rdo"]["uri"],
+            "doc_type": item["doc_type"]
         }
         physical_resource_uri = item["physical_file_path"].replace("/share/", "share://") # TODO: use file lib function to construct share uri
         physical_file = {
