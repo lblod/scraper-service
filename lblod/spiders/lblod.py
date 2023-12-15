@@ -22,6 +22,12 @@ def doc_type_from_type_ofs(type_ofs):
             return 'https://data.vlaanderen.be/id/concept/BesluitDocumentType/3fa67785-ffdc-4b30-8880-2b99d97b4dee'
         elif '9d5bfaca-bbf2-49dd-a830-769f91a6377b' in type_of:
             return 'https://data.vlaanderen.be/id/concept/BesluitDocumentType/9d5bfaca-bbf2-49dd-a830-769f91a6377b'
+
+    # If none of the UUID conditions are met, check for "Besluit" or "BehandelingOfAgendapunt" to detect non overview pages
+    for type_of in type_ofs:
+        if 'Besluit' in item or 'BehandelingOfAgendapunt' in item:
+            return 'https://schema.org/ItemPage'
+    # Else return general webpage type
     return 'http://schema.org/WebPage'
 
 class LBLODSpider(Spider):
