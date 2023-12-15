@@ -25,7 +25,7 @@ def doc_type_from_type_ofs(type_ofs):
 
     # If none of the UUID conditions are met, check for "Besluit" or "BehandelingOfAgendapunt" to detect non overview pages
     for type_of in type_ofs:
-        if 'Besluit' in item or 'BehandelingOfAgendapunt' in item:
+        if 'Besluit' in type_of or 'BehandelingOfAgendapunt' in type_of:
             return 'https://schema.org/ItemPage'
     # Else return general webpage type
     return 'http://schema.org/WebPage'
