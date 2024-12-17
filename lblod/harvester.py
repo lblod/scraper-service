@@ -131,6 +131,42 @@ def count_previous_urls(jobs):
     logger.info(f"found {count} previously harvested urls that should not be harvested again")
     return int(count)
 
+def get_current_pages(collection_uri):
+    nb_urls=count_number_of_files_in_collection(collection_uri)
+    if nb_urls == 0:
+        return []
+    offset = 0
+    limit = 5000
+    urls = []
+    while offset < nb_urls:
+        query_template = Template("""
+            PREFIX    adms: <http://www.w3.org/ns/adms#>
+            PREFIX    dct: <http://purl.org/dc/terms/>
+            PREFIX nie: <http://www.semanticdesktop.org/ontologies/2007/01/19/nie#>
+            SELECT ?url WHERE {
+                SELECT DISTINCT ?url WHERE {
+                    GRAPH $graph {
+                        $collection dct:hasPart ?rdo.
+                        ?rdo adms:status $status_collected; nie:url ?url.
+                    }
+                } ORDER BY ?url
+            } LIMIT $limit OFFSET $offset
+            """)
+        query_s = query_template.substitute(
+            graph = sparql_escape_uri(DEFAULT_GRAPH),
+            status_collected = sparql_escape_uri(FILE_STATUSES['COLLECTED']),
+            collection = sparql_escape_uri(collection_uri),
+            limit = limit,
+            offset = offset
+        )
+        results = query_sudo(query_s)
+        bindings = results["results"]["bindings"]
+        for b in bindings:
+            urls.append(b["url"]["value"])
+        offset = offset + limit
+
+    return urls
+
 def get_previous_pages(task_uri):
     jobs = list(get_previous_succesfull_jobs(task_uri))
     if len(jobs) > 0:
@@ -321,16 +357,16 @@ def get_initial_remote_data_object(collection_uri):
     PREFIX    dct: <http://purl.org/dc/terms/>
     PREFIX    nfo: <http://www.semanticdesktop.org/ontologies/2007/03/22/nfo#>
     PREFIX    nuao: <http://www.semanticdesktop.org/ontologies/2010/01/25/nuao#>
-
-    SELECT DISTINCT ?dataObject ?url ?uuid ?status
-    WHERE {
-      GRAPH $graph {
-        $collection dct:hasPart ?dataObject.
-        ?dataObject a nfo:RemoteDataObject;
-             mu:uuid ?uuid;
-             nie:url ?url.
-      }
-    }
+    SELECT  ?dataObject ?url ?uuid  WHERE {
+        SELECT DISTINCT ?dataObject ?url ?uuid  WHERE {
+            GRAPH $graph  {
+                $collection  dct:hasPart ?dataObject.
+                ?dataObject a nfo:RemoteDataObject;
+                    mu:uuid ?uuid; dct:created ?created;
+                    nie:url ?url.
+            }
+        } ORDER BY DESC(?created)
+    } LIMIT 1 OFFSET 0
 """)
     query_string = query_template.substitute(
         graph = sparql_escape_uri(DEFAULT_GRAPH),
