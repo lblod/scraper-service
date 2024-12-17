@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2024-12-17
+### Changed
+- set up close spider and configure max items to 50.000 to stop scraping in a reasonable time
+
 ## [1.1.1] - 2023-12-15
 ### Changed
 - improve detection of publications vs overview pages
