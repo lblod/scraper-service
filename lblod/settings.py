@@ -97,5 +97,5 @@ HTTPCACHE_STORAGE = "scrapy.extensions.httpcache.FilesystemCacheStorage"
 
 # We don't use the Telnet console. Disable it
 TELNETCONSOLE_ENABLED = False
-
 RETRY_TIMES = 5
+CLOSESPIDER_ITEMCOUNT=50000

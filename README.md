@@ -83,5 +83,5 @@ This relies on making a distinction between overview pages and actual documents 
 In addition 10% of previously fetched pages are refetched each run to avoid revisiting all pages if executions move outside of our interval (currently +- 30 days)
 Currently we only check previous executions of a scheduled job, so a manually triggered job will always index everything. If you remove and recreate a scheduled job this will also trigger a reindex of everyting.
 
-
-
+### Maximum amount of items
+The scraper is configured (in settings.py) to stop scraping after 50.000 pages (actual amount will be slightly larger). This should suffice for most use cases, if not set up incremental scraping so data can be fetched in several runs
