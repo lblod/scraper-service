@@ -6,4 +6,5 @@ ENV AUTO_RUN="false"
 ENV DEFAULT_GRAPH="http://mu.semte.ch/graphs/scraper-graph"
 ENV PYTHONUNBUFFERED="1"
 ENV IN_DOCKER="true"
+ENV STORE_OVERVIEW_PAGES="1"
 COPY scrapy.cfg /usr/src/app

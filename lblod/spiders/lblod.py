@@ -10,6 +10,14 @@ from lblod.harvester import ensure_remote_data_object, clean_url
 
 BESLUIT = Namespace("http://data.vlaanderen.be/ns/besluit#")
 LBBESLUIT = Namespace("http://lblod.data.gift/vocabularies/besluit/")
+BASIC_DOC_TYPE = 'http://schema.org/WebPage'
+INTERESTING_PROPERTIES = [
+    'heeftNotulen',
+    'heeftAgenda',
+    'heeftBesluitenlijst',
+    'heeftUittreksel',
+    'linkToPublication'
+]
 
 def doc_type_from_type_ofs(type_ofs):
     # notulen, agenda, besluitenlijst uittreksel
@@ -28,7 +36,7 @@ def doc_type_from_type_ofs(type_ofs):
         if 'Besluit' in type_of or 'BehandelingOfAgendapunt' in type_of:
             return 'https://schema.org/ItemPage'
     # Else return general webpage type
-    return 'http://schema.org/WebPage'
+    return BASIC_DOC_TYPE
 
 class LBLODSpider(Spider):
     name = "LBLODSpider"
@@ -40,23 +48,18 @@ class LBLODSpider(Spider):
         rdo = ensure_remote_data_object(self.collection, response.url)
         type_ofs = response.xpath('//@typeof').getall()
         doc_type = doc_type_from_type_ofs(type_ofs)
-        page = ItemLoader(item=Page(), response=response)
-        page.add_value("url", response.url)
-        page.add_value("contents", response.text)
-        page.add_value("rdo", rdo)
-        page.add_value("doc_type", doc_type)
-        yield page.load_item()
-        interesting_properties = [
-            'heeftNotulen',
-            'heeftAgenda',
-            'heeftBesluitenlijst',
-            'heeftUittreksel',
-            'linkToPublication'
-        ]
+        if self.store_overview_pages or doc_type != BASIC_DOC_TYPE:
+            page = ItemLoader(item=Page(), response=response)
+            page.add_value("url", response.url)
+            page.add_value("contents", response.text)
+            page.add_value("rdo", rdo)
+            page.add_value("doc_type", doc_type)
+            yield page.load_item()
+
         for element in response.xpath('//a[@href and @property]'):
             href = element.xpath('@href').get()
             property_value = element.xpath('@property').get()
-            if any(value in property_value for value in interesting_properties):
+            if any(value in property_value for value in INTERESTING_PROPERTIES):
                 if not href.endswith('.pdf'):
                     url = response.urljoin(href)
                     if not clean_url(url) in self.previous_collected_pages:

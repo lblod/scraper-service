@@ -18,7 +18,7 @@ from constants import OPERATIONS, TASK_STATUSES
 AUTO_RUN = os.getenv("AUTO_RUN") in ["yes", "on", "true", True, "1", 1]
 DEFAULT_GRAPH = os.getenv("DEFAULT_GRAPH", "http://mu.semte.ch/graphs/scraper-graph")
 MU_APPLICATION_FILE_STORAGE_PATH = os.getenv("MU_APPLICATION_FILE_STORAGE_PATH", "")
-
+STORE_OVERVIEW_PAGES = os.getenv("STORE_OVERVIEW_PAGES") in ["yes", "on", "true", True, "1", 1]
 
 def run_spider(spider, **kwargs):
     def _run():
@@ -61,7 +61,7 @@ def delta_handler():
                 update_task_status(task["uri"], TASK_STATUSES["BUSY"])
                 collection = get_harvest_collection_for_task(task)
                 rdo = get_initial_remote_data_object(collection)
-                run_spider(LBLODSpider, start_urls=[rdo["url"]], collection = collection, task = uri)
+                run_spider(LBLODSpider, start_urls=[rdo["url"]], collection = collection, task = uri, store_overview_pages = STORE_OVERVIEW_PAGES)
         except TaskNotFoundException:
           logger.debug(f"no task found for {uri}")
     return jsonify({"message": "thanks for all the fish!"})

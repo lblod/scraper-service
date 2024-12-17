@@ -61,6 +61,7 @@ NOTE: This service can replace the download-url-service && harvest-collector-ser
 The following environment variales can be configured:
 * `DEFAULT_GRAPH`: graph to write the download event and file to
 * `INCREMENTAL_RETRIEVAL`: (default: `false`) for scheduled jobs check result of previous succesfull executions and don't refetch all documents on each execution. 
+* `STORE_OVERVIEW_PAGES`: (default: `true`) also store overview pages (pages which do not seem to contain besluit data). Warning: Turning this off might cause the scraper to not store some relevant data.
 
 ### Model
 The service is triggered by updates of resources of type `nfo:RemoteDataObject` of which the status is updated to `http://lblod.data.gift/file-download-statuses/ready-to-be-cached`. It will download the associated URL (`nie:url`) as file.
