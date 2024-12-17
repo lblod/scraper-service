@@ -14,10 +14,10 @@ import gzip
 from .file import construct_insert_file_query, STORAGE_PATH
 from constants import DEFAULT_GRAPH, RESOURCE_BASE, TASK_STATUSES
 from .job import update_task_status, add_stats_to_task
-from .harvester import collection_has_collected_files, create_results_container, get_previous_pages, remove_random_10_percent_of_list
+from .harvester import collection_has_collected_files, create_results_container, get_previous_pages, get_current_pages, remove_random_10_percent_of_list
 
 INCREMENTAL_RETRIEVAL = os.getenv("INCREMENTAL_RETRIEVAL") in ["yes", "on", "true", True, "1", 1]
-
+TRY_RESUME_ON_RESTART = os.getenv("TRY_RESUME_ON_RESTART") in ["yes", "on", "true", True, "1", 1]
 class Pipeline:
     timestamp = datetime.datetime.now()
 
@@ -32,6 +32,10 @@ class Pipeline:
             spider.previous_collected_pages = remove_random_10_percent_of_list(previous_collected_pages)
         else:
             spider.previous_collected_pages = []
+        if TRY_RESUME_ON_RESTART:
+            previous_collected_pages=get_current_pages(spider.collection)
+            spider.previous_collected_pages = list(set(previous_collected_pages) | set(spider.previous_collected_pages))
+
 
     def close_spider(self, spider):
         try:
