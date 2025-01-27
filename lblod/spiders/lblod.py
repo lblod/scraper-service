@@ -65,7 +65,6 @@ class LBLODSpider(Spider):
                 if not href.endswith('.pdf'):
                     url = response.urljoin(href)
                     if not clean_url(url) in self.previous_collected_pages:
-                        ensure_remote_data_object(self.collection, url)
                         yield response.follow(url)
                     else:
                         logger.info(f"ignoring previously harvested url {url}")
