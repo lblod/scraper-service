@@ -28,7 +28,8 @@ def clean_url(url):
     extraction. We keep the other query parameters that are necessary for extraction.
     """
     url = urldefrag(url.strip()).url # remove eventual hash
-    return re.sub(";jsessionid=[a-zA-Z;0-9]*", "", url)
+    url = re.sub(";jsessionid=[a-zA-Z;0-9]*", "", url)
+    return re.sub(r'/\(S\([^)]+\)\)', '', url) # e.g : ranst https://ranst.meetingburger.net/(S(qp4fgo00jjm2islntouxtevs))/cbs/5272f4f2-4c69-45b1-8d59-3a314680c30f/besluitenlijs
 
 def create_remote_data_object(collection, url):
     query_template = Template("""
