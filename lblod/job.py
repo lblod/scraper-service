@@ -6,7 +6,7 @@ from escape_helpers import sparql_escape_uri, sparql_escape_datetime, sparql_esc
 from helpers import generate_uuid, logger
 from sudo_query import auth_update_sudo, update_sudo, query_sudo
 
-from constants import SCRAPE_JOB_TYPE, RESOURCE_BASE, DEFAULT_GRAPH
+from constants import SCRAPE_JOB_TYPE, RESOURCE_BASE, DEFAULT_GRAPH, TASK_STATUSES
 
 ############################################################
 # TODO: keep this generic and extract into packaged module later
@@ -15,6 +15,39 @@ from constants import SCRAPE_JOB_TYPE, RESOURCE_BASE, DEFAULT_GRAPH
 class TaskNotFoundException(Exception):
     "Raised when task is not found"
     pass
+
+
+def fail_busy_and_scheduled_tasks():
+    logger.info("Startup: failing busy tasks if there are any")
+    update_sudo(f"""
+  PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
+  PREFIX dct: <http://purl.org/dc/terms/>
+  PREFIX adms: <http://www.w3.org/ns/adms#>
+  PREFIX task: <http://redpencil.data.gift/vocabularies/tasks/>
+  DELETE {{
+    GRAPH {sparql_escape_uri(DEFAULT_GRAPH)} {{
+        ?task  adms:status ?status
+    }}
+  }}
+  INSERT {{
+    GRAPH {sparql_escape_uri(DEFAULT_GRAPH)} {{
+      ?task adms:status {sparql_escape_uri(TASK_STATUSES["FAILED"])}
+    }}
+  }}
+  WHERE  {{
+    GRAPH {sparql_escape_uri(DEFAULT_GRAPH)} {{
+        ?subject a task:Task .
+        ?subject dct:isPartOf ?job;
+        task:operation <http://lblod.data.gift/id/jobs/concept/TaskOperation/collecting>;
+        adms:status ?status.
+    VALUES ?status {{
+    {sparql_escape_uri(TASK_STATUSES["BUSY"])}
+    {sparql_escape_uri(TASK_STATUSES["SCHEDULED"])}
+    }}
+    }}
+  }}
+
+    """)
 
 def load_task(subject, graph = DEFAULT_GRAPH):
     query_template = Template("""
