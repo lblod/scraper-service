@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2025-01-29
+- added a scrape report to the scraper output for better visibility
+- added a flag to only store pages containing Notulen, Agenda, Besluitenlijst, Uittreksel, Besluit or BehandelingVanAgendapunt
+- updated clean url function to filter out dynamic segment of meetingburger URLs
+- fail busy and scheduled tasks on startup
+
 ## [1.2.0] - 2024-12-17
 ### Changed
 - set up close spider and configure max items to 50.000 to stop scraping in a reasonable time
