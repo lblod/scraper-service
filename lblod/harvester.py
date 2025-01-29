@@ -1,6 +1,6 @@
 from string import Template
 
-from escape_helpers import sparql_escape_uri, sparql_escape_string, sparql_escape_datetime
+from escape_helpers import sparql_escape_uri, sparql_escape_string, sparql_escape_datetime, sparql_escape_int
 from helpers import logger, generate_uuid
 from sudo_query import auth_update_sudo, update_sudo, query_sudo
 import uuid
@@ -262,7 +262,7 @@ def create_results_container(task_uri, collection_uri):
         task = sparql_escape_uri(task_uri)
     )
     update_sudo(query_s)
-    copy_files_to_results_container(collection_uri, uri)
+    return uri
 
 """
 get remote data object in a harvesting collection that matches remote url. Expects 1 RDO
@@ -392,3 +392,43 @@ def collection_has_collected_files(collection):
     )
     result = query_sudo(query_s)
     return result["boolean"]
+
+def store_report_metadata(physical_file_path, physical_file_name, results_container, size):
+        physical_resource_uri = physical_file_path.replace("/share/", "share://")
+        physical_resource_uuid = str(uuid.uuid4())
+        virtual_resource_uuid = str(uuid.uuid4())
+        virtual_resource_uri = f"http://data.lblod.info/files/{virtual_resource_uuid}"
+        file_created = datetime.datetime.now()
+        update_sudo(f"""
+PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
+PREFIX nfo: <http://www.semanticdesktop.org/ontologies/2007/03/22/nfo#>
+PREFIX nie: <http://www.semanticdesktop.org/ontologies/2007/01/19/nie#>
+PREFIX dct: <http://purl.org/dc/terms/>
+PREFIX dbpedia: <http://dbpedia.org/ontology/>
+PREFIX ndo: <http://oscaf.sourceforge.net/ndo.html#>
+PREFIX    adms: <http://www.w3.org/ns/adms#>
+        INSERT DATA {{
+          GRAPH {sparql_escape_uri(DEFAULT_GRAPH)} {{
+            {sparql_escape_uri(results_container)} <http://redpencil.data.gift/vocabularies/tasks/hasFile> {sparql_escape_uri(virtual_resource_uri)}.
+            {sparql_escape_uri(virtual_resource_uri)} a nfo:FileDataObject ;
+            mu:uuid {sparql_escape_string(virtual_resource_uuid)} ;
+            nfo:fileName {sparql_escape_string(physical_file_name)}  ;
+            dct:format "application/json" ;
+            dct:creator <http://lblod.data.gift/services/lblod-scraper>;
+            dct:created {sparql_escape_datetime(file_created)} ;
+            nfo:fileSize {sparql_escape_int(size)} ;
+            dbpedia:fileExtension "json" .
+
+           {sparql_escape_uri(physical_resource_uri)} a nfo:FileDataObject ;
+            mu:uuid {sparql_escape_string(physical_resource_uuid)} ;
+            nfo:fileName {sparql_escape_string(physical_file_name)}  ;
+            dct:format "application/json" ;
+            dct:created {sparql_escape_datetime(file_created)} ;
+            dct:creator <http://lblod.data.gift/services/lblod-scraper>;
+            nfo:fileSize {sparql_escape_int(size)} ;
+            dbpedia:fileExtension "json" ;
+            nie:dataSource {sparql_escape_uri(virtual_resource_uri)}.
+          }}
+        }}
+
+        """)

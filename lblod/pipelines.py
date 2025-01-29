@@ -13,13 +13,19 @@ import gzip
 
 from .file import construct_insert_file_query, STORAGE_PATH
 from constants import DEFAULT_GRAPH, RESOURCE_BASE, TASK_STATUSES
-from .job import update_task_status, add_stats_to_task
-from .harvester import collection_has_collected_files, create_results_container, get_previous_pages, remove_random_10_percent_of_list
+from .job import update_task_status
+from .harvester import collection_has_collected_files, create_results_container, get_previous_pages, remove_random_10_percent_of_list, copy_files_to_results_container, store_report_metadata
+from .extendedjsonencoder import ExtendedJsonEncoder
+
+from scrapy.spidermiddlewares.httperror import HttpError
+from twisted.internet.error import DNSLookupError, TimeoutError, TCPTimedOutError
+import json
 
 INCREMENTAL_RETRIEVAL = os.getenv("INCREMENTAL_RETRIEVAL") in ["yes", "on", "true", True, "1", 1]
 
 class Pipeline:
     timestamp = datetime.datetime.now()
+    failed_urls = []
 
     def __init__(self):
         self.storage_path = os.path.join(STORAGE_PATH, self.timestamp.isoformat())
@@ -33,33 +39,54 @@ class Pipeline:
         else:
             spider.previous_collected_pages = []
 
+    def errback_http(self, failure):
+        url = failure.request.url
+        retries = failure.request.meta.get("retry_times", 0)
+        status_code = None
+
+        if failure.check(HttpError):
+            response = failure.value.response
+            status_code = response.status
+            logger.warning(f"HTTP {status_code} error on {url} (Retry {retries})")
+        elif failure.check(DNSLookupError):
+            logger.warning(f"DNS lookup failed for {url} (Retry {retries})")
+        elif failure.check(TimeoutError, TCPTimedOutError):
+            logger.warning(f"Timeout error on {url} (Retry {retries})")
+        else:
+            logger.warning(f"Unknown error on {url}")
+        self.failed_urls.append(url)
+
     def close_spider(self, spider):
         try:
+            results_container = create_results_container(spider.task, spider.collection)
+            self.store_report(spider, results_container)
             if collection_has_collected_files(spider.collection):
-                create_results_container(spider.task, spider.collection)
+                copy_files_to_results_container(spider.collection, results_container)
                 update_task_status(spider.task, TASK_STATUSES["SUCCESS"])
             else:
                 logger.error("spider closed without collecting files")
                 update_task_status(spider.task, TASK_STATUSES["FAILED"])
-            stats = spider.crawler.stats.get_stats()
-            if stats.get('log_count/ERROR') == 0:
-                items = stats.get("item_scraped_count", 0)
-                start_time = stats.get('start_time')
-                end_time = stats.get('end_time')
-                pages = stats.get("response_received_count", 0)
-                depth = stats.get("request_depth_max", 0)
-                add_stats_to_collection(spider.task, {
-                    "start_time": start_time,
-                    "end_time": end_time,
-                    "pages": pages,
-                    "items": items,
-                    "depth": depth
-                })
+
         except Exception as e:
             logger.error(e)
             logger.error("failure while closing spider, attempting to set task to failed")
             update_task_status(spider.task, TASK_STATUSES["FAILED"])
 
+
+    def store_report(self, spider, results_container):
+        stats = spider.crawler.stats.get_stats()
+        data = {
+            "stats": stats,
+            "failed_urls": self.failed_urls,
+        }
+        # assumes storage path is unique to the pipeline
+        physical_file_name = "00-scrape-report.json"
+        physical_file_path = os.path.join(self.storage_path, physical_file_name)
+        with open(physical_file_path, "w") as f:
+            json.dump(data, f, indent=2, cls=ExtendedJsonEncoder)
+            f.flush()
+            size = f.tell()
+        store_report_metadata(physical_file_path, physical_file_name, results_container, size)
 
     def process_spider_exception(self, response, exception, spider):
         # Extract the relevant information from the failed response

@@ -10,7 +10,7 @@ from apscheduler.triggers.cron import CronTrigger
 from scrapy.crawler import CrawlerProcess
 from scrapy.utils.project import get_project_settings
 from lblod.spiders.lblod import LBLODSpider
-from lblod.job import load_task, update_task_status, TaskNotFoundException
+from lblod.job import load_task, update_task_status, TaskNotFoundException, fail_busy_and_scheduled_tasks
 from lblod.harvester import get_harvest_collection_for_task, get_initial_remote_data_object
 from helpers import logger
 from constants import OPERATIONS, TASK_STATUSES
@@ -19,6 +19,9 @@ AUTO_RUN = os.getenv("AUTO_RUN") in ["yes", "on", "true", True, "1", 1]
 DEFAULT_GRAPH = os.getenv("DEFAULT_GRAPH", "http://mu.semte.ch/graphs/scraper-graph")
 MU_APPLICATION_FILE_STORAGE_PATH = os.getenv("MU_APPLICATION_FILE_STORAGE_PATH", "")
 
+
+# on startup fail existing busy tasks
+fail_busy_and_scheduled_tasks()
 
 def run_spider(spider, **kwargs):
     def _run():
@@ -41,6 +44,7 @@ def scrape():
 @app.route("/delta", methods=["POST"])
 def delta_handler():
     # Only trigger in case of job insertion
+    logger.info("delta handling")
     request_data = request.get_json()
     inserts, *_ = [
         changeset["inserts"] for changeset in request_data if "inserts" in changeset
@@ -52,10 +56,12 @@ def delta_handler():
         and insert["object"]["value"] == TASK_STATUSES["SCHEDULED"]
     ]
     if not scheduled_tasks:
+        logger.info("delta did not contain scheduled tasks?")
         return jsonify({"message": "delta didn't contain download jobs, ignoring"})
 
     for uri in scheduled_tasks:
         try:
+            logger.info(f"loading task {uri}")
             task = load_task(uri)
             if (task["operation"] == OPERATIONS["COLLECTING"]):
                 update_task_status(task["uri"], TASK_STATUSES["BUSY"])
