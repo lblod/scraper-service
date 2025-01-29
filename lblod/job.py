@@ -101,33 +101,3 @@ def update_task_status (task, status, graph=DEFAULT_GRAPH):
         status=sparql_escape_uri(status)
     )
     update_sudo(query_string)
-
-def add_stats_to_task(task, stats, graph=DEFAULT_GRAPH):
-    query_template = Template("""
-PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
-PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
-PREFIX prov: <http://www.w3.org/ns/prov#>
-PREFIX dct: <http://purl.org/dc/terms/>
-PREFIX cogs: <http://vocab.deri.ie/cogs#>
-PREFIX scrapy: <http://redpencil.data.gift/vocabularies/scrapy/>
-INSERT DATA {
-    GRAPH $graph {
-        $task prov:startedAtTime $start_time;
-             prov:endedAtTime $end_time;
-             scrapy:itemsScrapedCount $items;
-             scrapy:responseReceivedCount $pages;
-             scrapy:requestDepthMax $depth.
-    }
-}
-""")
-    query_string = query_template.substitute(
-        graph = sparql_escape_uri(graph),
-        start_time = sparql_escape_datetime(stats["start_time"]),
-        end_time = sparql_escape_datetime(stats["end_time"]),
-        pages = sparql_escape_int(stats["pages"]),
-        items = sparql_escape_int(stats["items"]),
-        depth = sparql_escape_int(stats["depth"]),
-        task = sparql_escape_uri(task)
-    )
-    update_sudo(query_string)
-
