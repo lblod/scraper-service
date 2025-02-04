@@ -174,10 +174,11 @@ def get_previous_pages(task_uri):
     return []
 
 def remove_random_10_percent_of_list(input_list):
-    num_elements_to_remove = int(len(input_list) * 0.1)
+    if not input_list:
+        return input_list
+    num_elements_to_remove = max(1, int(len(input_list) * 0.1))
     elements_to_remove = random.sample(input_list, num_elements_to_remove)
-    updated_list = [item for item in input_list if item not in elements_to_remove]
-    return updated_list
+    return [item for item in input_list if item not in elements_to_remove]
 
 def count_number_of_files_in_collection(collection_uri):
         query_template = Template("""
