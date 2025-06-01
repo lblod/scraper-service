@@ -63,8 +63,8 @@ class LBLODSpider(Spider):
             property_value = element.xpath('@property').get()
             if any(value in property_value for value in INTERESTING_PROPERTIES):
                 if not href.endswith('.pdf'):
-                    url = response.urljoin(href)
-                    if not clean_url(url) in self.previous_collected_pages:
+                    url = clean_url(response.urljoin(href))
+                    if not url in self.previous_collected_pages:
                         yield response.follow(url)
                     else:
                         logger.info(f"ignoring previously harvested url {url}")
