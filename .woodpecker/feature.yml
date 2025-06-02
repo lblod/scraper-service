@@ -1,10 +1,13 @@
 steps:
-  push-latest:
+  build-and-push:
     image: woodpeckerci/plugin-docker-buildx
     settings:
-      repo: ${CI_REPO%%-service}
-      tags: ${CI_COMMIT_BRANCH/\//-}
-    secrets: [docker_username, docker_password]
+      repo: "${CI_REPO_OWNER%%io}/${CI_REPO_NAME}"
+      tags: "feature-${CI_COMMIT_BRANCH##feature/}"
+      username:
+        from_secret: docker_username
+      password:
+        from_secret: docker_password
 when:
-  branch: feature/*
-  event: push
+  - event: push
+    branch: [feature/*]
