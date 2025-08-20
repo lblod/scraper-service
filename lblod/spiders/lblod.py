@@ -55,6 +55,7 @@ class LBLODSpider(Spider):
             page.add_value("url", response.url)
             page.add_value("contents", response.text)
             page.add_value("rdo", rdo)
+            page.add_value("job_id", self.job_id)
             page.add_value("doc_type", doc_type)
             yield page.load_item()
 

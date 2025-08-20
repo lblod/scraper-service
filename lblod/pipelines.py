@@ -97,7 +97,7 @@ class Pipeline:
 
     def process_item(self, item, spider):
         adapter = ItemAdapter(item)
-
+        job_id = adapter.get('job_id')
         contents = adapter.get("contents")
         remote_data_object = adapter.get("rdo")
         if isinstance(contents, (bytes, bytearray)):
@@ -108,9 +108,12 @@ class Pipeline:
             # Can't write a file that isn't a (byte)string
             return item
 
+        base_folder = os.path.join(self.storage_path, job_id)
+        os.makedirs(base_folder, exist_ok = True)
+
         _uuid = str(uuid.uuid4())
         physical_file_name = f"{_uuid}.html.gz"
-        physical_file_path = os.path.join(self.storage_path, physical_file_name)
+        physical_file_path = os.path.join(base_folder, physical_file_name)
         with gzip.open(physical_file_path, write_mode) as f:
             f.write(contents.encode())
         size = os.stat(physical_file_path).st_size

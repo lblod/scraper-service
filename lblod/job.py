@@ -55,7 +55,7 @@ def load_task(subject, graph = DEFAULT_GRAPH):
   PREFIX dct: <http://purl.org/dc/terms/>
   PREFIX adms: <http://www.w3.org/ns/adms#>
   PREFIX task: <http://redpencil.data.gift/vocabularies/tasks/>
-  SELECT DISTINCT ?id ?job ?created ?modified ?status ?index ?operation ?error WHERE {
+  SELECT DISTINCT ?id ?job ?jobId ?created ?modified ?status ?index ?operation ?error WHERE {
       GRAPH $graph {
         $subject a task:Task .
         $subject dct:isPartOf ?job;
@@ -65,6 +65,7 @@ def load_task(subject, graph = DEFAULT_GRAPH):
                       adms:status ?status;
                       task:index ?index;
                       task:operation ?operation.
+        ?job mu:uuid ?jobId.
         OPTIONAL { $subject task:error ?error. }
       }
     }
@@ -82,6 +83,7 @@ def load_task(subject, graph = DEFAULT_GRAPH):
         item = bindings[0]
         id = item['id']['value']
         job = item['job']['value']
+        job_id = item['jobId']['value']
         status = item['status']['value']
         index = item['index']['value']
         operation = item['operation']['value']
@@ -89,6 +91,7 @@ def load_task(subject, graph = DEFAULT_GRAPH):
         return {
             'id': id,
             'job': job,
+            'job_id' : job_id,
             'status': status,
             'operation': operation,
             'index': index,
