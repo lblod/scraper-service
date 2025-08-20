@@ -108,7 +108,7 @@ class Pipeline:
             # Can't write a file that isn't a (byte)string
             return item
 
-        base_folder = os.path.join(self.storage_path, job_id)
+        base_folder = os.path.join(self.storage_path, job_id, "scrape")
         os.makedirs(base_folder, exist_ok = True)
 
         _uuid = str(uuid.uuid4())
