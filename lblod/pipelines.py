@@ -28,7 +28,7 @@ class Pipeline:
     failed_urls = []
 
     def __init__(self):
-        self.storage_path = os.path.join(STORAGE_PATH, self.timestamp.isoformat())
+        self.storage_path = STORAGE_PATH
         if not os.path.exists(self.storage_path):
             os.mkdir(self.storage_path)
 
