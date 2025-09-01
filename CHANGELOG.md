@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [1.4.0] - 2025-09-01
+- fixed a cycle in crawling (related to relative urls and sessionids used in paths)
+- changed storage path to use job id instead of timestamp
+
 ## [1.3.1] - 2025-02-20
 - make sure to revisit at least one page
 
