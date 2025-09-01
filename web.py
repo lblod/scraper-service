@@ -67,7 +67,7 @@ def delta_handler():
                 update_task_status(task["uri"], TASK_STATUSES["BUSY"])
                 collection = get_harvest_collection_for_task(task)
                 rdo = get_initial_remote_data_object(collection)
-                run_spider(LBLODSpider, start_urls=[rdo["url"]], collection = collection, task = uri)
+                run_spider(LBLODSpider, start_urls=[rdo["url"]], collection = collection, task = uri, job_id = task["job_id"])
         except TaskNotFoundException:
           logger.debug(f"no task found for {uri}")
     return jsonify({"message": "thanks for all the fish!"})

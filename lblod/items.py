@@ -6,6 +6,7 @@ class Page(Item):
     url = Field(input_processor=MapCompose(str.strip), output_processor=TakeFirst())
     contents = Field(output_processor=TakeFirst())
     rdo = Field(output_processor=TakeFirst())
+    job_id = Field(output_processor=TakeFirst())
     doc_type = Field(output_processor=TakeFirst())
     uuid = Field(output_processor=TakeFirst())
     size = Field(output_processor=TakeFirst())

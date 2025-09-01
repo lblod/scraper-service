@@ -3,8 +3,7 @@ from string import Template
 from escape_helpers import sparql_escape_uri, sparql_escape_string, sparql_escape_int, sparql_escape_datetime
 from constants import FILE_STATUSES
 MU_APPLICATION_GRAPH = os.environ.get("MU_APPLICATION_GRAPH")
-RELATIVE_STORAGE_PATH = os.environ.get("MU_APPLICATION_FILE_STORAGE_PATH", "").rstrip("/")
-STORAGE_PATH = f"/share/{RELATIVE_STORAGE_PATH}"
+STORAGE_PATH = f"/share/"
 
 ############################################################
 # TODO: keep this generic and extract into packaged module later
@@ -77,13 +76,3 @@ WHERE {
     )
 
 
-# Ported from https://github.com/mu-semtech/file-service/blob/dd42c51a7344e4f7a3f7fba2e6d40de5d7dd1972/web.rb#L228
-def shared_uri_to_path(uri):
-    return uri.replace('share://', '/share/')
-
-# Ported from https://github.com/mu-semtech/file-service/blob/dd42c51a7344e4f7a3f7fba2e6d40de5d7dd1972/web.rb#L232
-def file_to_shared_uri(file_name):
-    if RELATIVE_STORAGE_PATH:
-        return f"share://{RELATIVE_STORAGE_PATH}/{file_name}"
-    else:
-        return f"share://{file_name}"
