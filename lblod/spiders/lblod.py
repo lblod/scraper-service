@@ -12,14 +12,15 @@ from lblod.harvester import ensure_remote_data_object, clean_url
 BESLUIT = Namespace("http://data.vlaanderen.be/ns/besluit#")
 LBBESLUIT = Namespace("http://lblod.data.gift/vocabularies/besluit/")
 GENERAL_PAGE_TYPE = 'http://schema.org/WebPage'
-INTERESTING_PROPERTIES = [
-    'heeftNotulen',
-    'heeftAgenda',
-    'heeftBesluitenlijst',
-    'heeftUittreksel',
-    'linkToPublication'
-]
-STORE_ALL_PAGES = os.getenv("STORE_ALL_PAGES") in ["yes", "on", "true", True, "1", 1]
+
+INTERESTING_PROPERTIES = os.getenv(
+    "INTERESTING_PROPERTIES", 
+    "heeftNotulen,heeftAgenda,heeftBesluitenlijst,heeftUittreksel,linkToPublication"
+).split(",")
+ENABLE_FILTERING_ON_INTERESTING_PROPERTIES = os.getenv("ENABLE_FILTERING_ON_INTERESTING_PROPERTIES", "yes") in ["yes", "on", "true", True, "1", 1]
+
+
+STORE_ALL_PAGES = os.getenv("store_all_pages", "no") in ["yes", "on", "true", true, "1", 1]
 
 def doc_type_from_type_ofs(type_ofs):
     # notulen, agenda, besluitenlijst uittreksel
@@ -62,7 +63,7 @@ class LBLODSpider(Spider):
         for element in response.xpath('//a[@href and @property]'):
             href = element.xpath('@href').get()
             property_value = element.xpath('@property').get()
-            if any(value in property_value for value in INTERESTING_PROPERTIES):
+            if ENABLE_FILTERING_ON_INTERESTING_PROPERTIES and any(value in property_value for value in INTERESTING_PROPERTIES):
                 if not href.endswith('.pdf'):
                     url = clean_url(response.urljoin(href))
                     if not url in self.previous_collected_pages:

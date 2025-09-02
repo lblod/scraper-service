@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.1] - 2025-09-02
+- making `INTERESTING_PROPERTIES` configurable 
+
 ## [1.4.0] - 2025-09-01
 - fixed a cycle in crawling (related to relative urls and sessionids used in paths)
 - changed storage path to use job id instead of timestamp
