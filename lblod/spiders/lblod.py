@@ -20,7 +20,7 @@ INTERESTING_PROPERTIES = os.getenv(
 ENABLE_FILTERING_ON_INTERESTING_PROPERTIES = os.getenv("ENABLE_FILTERING_ON_INTERESTING_PROPERTIES", "yes") in ["yes", "on", "true", True, "1", 1]
 
 
-STORE_ALL_PAGES = os.getenv("store_all_pages", "no") in ["yes", "on", "true", true, "1", 1]
+STORE_ALL_PAGES = os.getenv("store_all_pages", "no") in ["yes", "on", "true", True, "1", 1]
 
 def doc_type_from_type_ofs(type_ofs):
     # notulen, agenda, besluitenlijst uittreksel
