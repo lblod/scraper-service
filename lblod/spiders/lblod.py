@@ -63,7 +63,7 @@ class LBLODSpider(Spider):
         for element in response.xpath('//a[@href and @property]'):
             href = element.xpath('@href').get()
             property_value = element.xpath('@property').get()
-            if ENABLE_FILTERING_ON_INTERESTING_PROPERTIES and any(value in property_value for value in INTERESTING_PROPERTIES):
+            if ENABLE_FILTERING_ON_INTERESTING_PROPERTIES is not True or any(value in property_value for value in INTERESTING_PROPERTIES):
                 if not href.endswith('.pdf'):
                     url = clean_url(response.urljoin(href))
                     if not url in self.previous_collected_pages:
