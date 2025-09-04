@@ -33,9 +33,9 @@ def doc_type_from_type_ofs(type_ofs):
         elif '9d5bfaca-bbf2-49dd-a830-769f91a6377b' in type_of:
             return 'https://data.vlaanderen.be/id/concept/BesluitDocumentType/9d5bfaca-bbf2-49dd-a830-769f91a6377b'
 
-    # If none of the UUID conditions are met, check for "Besluit" or "BehandelingOfAgendapunt" to detect non overview pages
+    # If none of the UUID conditions are met, check for "Besluit" or "BehandelingVanAgendapunt" to detect non overview pages
     for type_of in type_ofs:
-        if 'Besluit' in type_of or 'BehandelingOfAgendapunt' in type_of:
+        if 'Besluit' in type_of or 'BehandelingVanAgendapunt' in type_of:
             return 'https://schema.org/ItemPage'
     # Else return general webpage type
     return GENERAL_PAGE_TYPE
