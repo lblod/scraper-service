@@ -79,9 +79,12 @@ class Pipeline:
             "stats": stats,
             "failed_urls": self.failed_urls,
         }
-        # assumes storage path is unique to the pipeline
+        # Store report in job-specific subfolder like other files
+        job_id = spider.job_id
+        base_folder = os.path.join(self.storage_path, job_id, "scrape")
+        os.makedirs(base_folder, exist_ok=True)
         physical_file_name = "00-scrape-report.json"
-        physical_file_path = os.path.join(self.storage_path, physical_file_name)
+        physical_file_path = os.path.join(base_folder, physical_file_name)
         with open(physical_file_path, "w") as f:
             json.dump(data, f, indent=2, cls=ExtendedJsonEncoder)
             f.flush()
