@@ -62,6 +62,8 @@ The following environment variales can be configured:
 * `DEFAULT_GRAPH`: graph to write the download event and file to
 * `INCREMENTAL_RETRIEVAL`: (default: `false`) for scheduled jobs check result of previous succesfull executions and don't refetch all documents on each execution. 
 * `STORE_ALL_PAGES`: (default: `true`) when disabled (`false`) will only store pages containing Notulen, Agenda, Besluitenlijst, Uittreksel, Besluit or BehandelingVanAgendapunt. (using the same heuristic as incremantal retrieval).
+* `INTERESTING_PROPERTIES`: (default: `heeftNotulen,heeftAgenda,heeftBesluitenlijst,heeftUittreksel,linkToPublication`) comma-separated list of properties that determine which links to follow during crawling. Only links with these properties will be followed. Set to empty string to follow all links.
+
 
 ### Model
 The service is triggered by updates of resources of type `nfo:RemoteDataObject` of which the status is updated to `http://lblod.data.gift/file-download-statuses/ready-to-be-cached`. It will download the associated URL (`nie:url`) as file.
