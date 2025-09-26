@@ -36,8 +36,8 @@ def fail_busy_and_scheduled_tasks():
   }}
   WHERE  {{
     GRAPH {sparql_escape_uri(DEFAULT_GRAPH)} {{
-        ?subject a task:Task .
-        ?subject dct:isPartOf ?job;
+        ?task a task:Task .
+        ?task dct:isPartOf ?job;
         task:operation <http://lblod.data.gift/id/jobs/concept/TaskOperation/collecting>;
         adms:status ?status.
     VALUES ?status {{
