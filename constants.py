@@ -20,3 +20,5 @@ TASK_STATUSES = {
 OPERATIONS = {
     'COLLECTING': 'http://lblod.data.gift/id/jobs/concept/TaskOperation/collecting'
 }
+
+SPARQL_TIMEOUT = int(os.environ.get('SPARQL_TIMEOUT', '300'))

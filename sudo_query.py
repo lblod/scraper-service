@@ -4,16 +4,21 @@ import time
 
 from SPARQLWrapper import SPARQLWrapper, JSON
 from helpers import logger
+from constants import SPARQL_TIMEOUT
 
 sparqlQuery = SPARQLWrapper(os.environ.get("MU_SPARQL_ENDPOINT"), returnFormat=JSON)
 sparqlQuery.addCustomHttpHeader("mu-auth-sudo", "true")
+sparqlQuery.setTimeout(SPARQL_TIMEOUT)
+
 sparqlUpdate = SPARQLWrapper(os.environ.get("MU_SPARQL_UPDATEPOINT"), returnFormat=JSON)
 sparqlUpdate.method = "POST"
 sparqlUpdate.addCustomHttpHeader("mu-auth-sudo", "true")
+sparqlUpdate.setTimeout(SPARQL_TIMEOUT)
 
 authSparqlUpdate = SPARQLWrapper(os.environ.get("MU_AUTH_ENDPOINT"), returnFormat=JSON)
 authSparqlUpdate.method = "POST"
 authSparqlUpdate.addCustomHttpHeader("mu-auth-sudo", "true")
+authSparqlUpdate.setTimeout(SPARQL_TIMEOUT)
 
 
 
@@ -51,6 +56,7 @@ def update_sudo(the_query, attempt=0, max_retries=5):
                 update_sudo(the_query, attempt + 1, max_retries)
             else:
                 logger.warn(f"Max attempts reached for query. Skipping.")
+                raise
 
 
 def auth_update_sudo(the_query):
