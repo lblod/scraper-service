@@ -57,17 +57,3 @@ def update_sudo(the_query, attempt=0, max_retries=5):
             else:
                 logger.warn(f"Max attempts reached for query. Skipping.")
                 raise
-
-
-def auth_update_sudo(the_query):
-    """Execute the given update SPARQL query on the triple store,
-    if the given query is no update query, nothing happens."""
-    authSparqlUpdate.setQuery(the_query)
-    if authSparqlUpdate.isSparqlUpdateRequest():
-        start = time.time()
-        logger.debug(f"started query at {datetime.datetime.now()}")
-        logger.debug("execute query: \n" + the_query)
-
-        authSparqlUpdate.query()
-
-        logger.debug(f"query took {time.time() - start} seconds")
