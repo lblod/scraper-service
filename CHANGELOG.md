@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [1.5.0] - 2025-09-29
+### Fixed
+- typo in cleanup query, hanging busy jobs should now be set to failed on startup
+- properly recognize pages with only a behandeling
+
+### Changed
+- added timeout of 300s to SPARQL queries to prevent unexpected hangups
+
 ### Added
 - made `INTERESTING_PROPERTIES` configurable 
 
