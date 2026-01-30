@@ -17,17 +17,14 @@ from .job import update_task_status
 from .harvester import collection_has_collected_files, create_results_container, get_previous_pages, remove_random_10_percent_of_list, copy_files_to_results_container, store_report_metadata
 from .extendedjsonencoder import ExtendedJsonEncoder
 
-from scrapy.spidermiddlewares.httperror import HttpError
-from twisted.internet.error import DNSLookupError, TimeoutError, TCPTimedOutError
 import json
 
 INCREMENTAL_RETRIEVAL = os.getenv("INCREMENTAL_RETRIEVAL") in ["yes", "on", "true", True, "1", 1]
 
 class Pipeline:
-    timestamp = datetime.datetime.now()
-    failed_urls = []
 
     def __init__(self):
+        self.timestamp = datetime.datetime.now()
         self.storage_path = STORAGE_PATH
         if not os.path.exists(self.storage_path):
             os.mkdir(self.storage_path)
@@ -35,26 +32,9 @@ class Pipeline:
     def open_spider(self, spider):
         if INCREMENTAL_RETRIEVAL:
             previous_collected_pages = get_previous_pages(spider.task)
-            spider.previous_collected_pages = remove_random_10_percent_of_list(previous_collected_pages)
+            spider.previous_collected_pages = set(remove_random_10_percent_of_list(previous_collected_pages))
         else:
-            spider.previous_collected_pages = []
-
-    def errback_http(self, failure):
-        url = failure.request.url
-        retries = failure.request.meta.get("retry_times", 0)
-        status_code = None
-
-        if failure.check(HttpError):
-            response = failure.value.response
-            status_code = response.status
-            logger.warning(f"HTTP {status_code} error on {url} (Retry {retries})")
-        elif failure.check(DNSLookupError):
-            logger.warning(f"DNS lookup failed for {url} (Retry {retries})")
-        elif failure.check(TimeoutError, TCPTimedOutError):
-            logger.warning(f"Timeout error on {url} (Retry {retries})")
-        else:
-            logger.warning(f"Unknown error on {url}")
-        self.failed_urls.append(url)
+            spider.previous_collected_pages = set()
 
     def close_spider(self, spider):
         try:
@@ -77,7 +57,7 @@ class Pipeline:
         stats = spider.crawler.stats.get_stats()
         data = {
             "stats": stats,
-            "failed_urls": self.failed_urls,
+            "failed_urls": spider.failed_urls,
         }
         # Store report in job-specific subfolder like other files
         job_id = spider.job_id

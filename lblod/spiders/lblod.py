@@ -1,8 +1,12 @@
 import os
+from urllib.parse import urlparse
+import scrapy
 from scrapy import Spider
 from scrapy.loader import ItemLoader
 from scrapy.http.response.text import TextResponse
 from scrapy.exceptions import IgnoreRequest
+from scrapy.spidermiddlewares.httperror import HttpError
+from twisted.internet.error import DNSLookupError, TimeoutError, TCPTimedOutError
 from rdflib import Graph, Namespace
 from helpers import logger
 
@@ -47,6 +51,33 @@ def doc_type_from_type_ofs(type_ofs):
 
 class LBLODSpider(Spider):
     name = "LBLODSpider"
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.failed_urls = []
+        if self.start_urls:
+            self.allowed_domains = [urlparse(url).netloc for url in self.start_urls]
+            logger.info(f"Restricting crawl to domains: {self.allowed_domains}")
+
+    def start_requests(self):
+        for url in self.start_urls:
+            yield scrapy.Request(url, callback=self.parse, errback=self.errback_http)
+
+    def errback_http(self, failure):
+        url = failure.request.url
+        retries = failure.request.meta.get("retry_times", 0)
+
+        if failure.check(HttpError):
+            response = failure.value.response
+            logger.warning(f"HTTP {response.status} error on {url} (Retry {retries})")
+        elif failure.check(DNSLookupError):
+            logger.warning(f"DNS lookup failed for {url} (Retry {retries})")
+        elif failure.check(TimeoutError, TCPTimedOutError):
+            logger.warning(f"Timeout error on {url} (Retry {retries})")
+        else:
+            logger.warning(f"Unknown error on {url}")
+        self.failed_urls.append(url)
+
     def parse(self, response):
         if not isinstance(response, TextResponse):
             raise IgnoreRequest("ignoring non text response")
@@ -71,7 +102,7 @@ class LBLODSpider(Spider):
                 if not href.endswith('.pdf'):
                     url = clean_url(response.urljoin(href))
                     if not url in self.previous_collected_pages:
-                        yield response.follow(url)
+                        yield response.follow(url, errback=self.errback_http)
                     else:
                         logger.info(f"ignoring previously harvested url {url}")
                 else:
