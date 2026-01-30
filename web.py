@@ -12,8 +12,8 @@ from scrapy.utils.project import get_project_settings
 from lblod.spiders.lblod import LBLODSpider
 from lblod.job import load_task, update_task_status, TaskNotFoundException, fail_busy_and_scheduled_tasks
 from lblod.harvester import get_harvest_collection_for_task, get_initial_remote_data_object
-from helpers import logger
-from constants import OPERATIONS, TASK_STATUSES
+from helpers import logger, generate_uuid
+from constants import OPERATIONS, TASK_STATUSES, RESOURCE_BASE
 
 AUTO_RUN = os.getenv("AUTO_RUN") in ["yes", "on", "true", True, "1", 1]
 DEFAULT_GRAPH = os.getenv("DEFAULT_GRAPH", "http://mu.semte.ch/graphs/scraper-graph")
@@ -36,8 +36,11 @@ def run_spider(spider, **kwargs):
 def scrape():
     if "url" in request.args:
         start_urls = [request.args["url"]]
-        run_spider(LBLODSpider, start_urls=start_urls)
-        return jsonify({"message": "Scraping started"})
+        job_id = generate_uuid()
+        collection = f"{RESOURCE_BASE}harvesting-collections/{generate_uuid()}"
+        task = f"{RESOURCE_BASE}tasks/{generate_uuid()}"
+        run_spider(LBLODSpider, start_urls=start_urls, collection=collection, task=task, job_id=job_id)
+        return jsonify({"message": "Scraping started", "job_id": job_id})
     else:
         return jsonify({"error": "URL parameter is missing"})
 
