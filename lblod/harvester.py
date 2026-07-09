@@ -204,39 +204,64 @@ def count_number_of_files_in_collection(collection_uri):
         else:
           return 0
 
-def copy_files_to_results_container(collection_uri, results_container):
-    number_of_files = count_number_of_files_in_collection(collection_uri)
-    if number_of_files > 0:
-        offset = 0
-        query_template = Template("""
-        PREFIX    adms: <http://www.w3.org/ns/adms#>
-        PREFIX    mu: <http://mu.semte.ch/vocabularies/core/>
-        PREFIX    nie: <http://www.semanticdesktop.org/ontologies/2007/01/19/nie#>
-        PREFIX    dct: <http://purl.org/dc/terms/>
-        PREFIX    task: <http://redpencil.data.gift/vocabularies/tasks/>
-        PREFIX    nfo: <http://www.semanticdesktop.org/ontologies/2007/03/22/nfo#>
-        INSERT {
-           GRAPH $graph { $result_container task:hasFile ?rdo.  }
-        }
-       WHERE {
-          SELECT ?rdo WHERE {
-            GRAPH $graph {
-              $collection dct:hasPart ?rdo.
-              ?rdo adms:status $status_collected.
-            }
-         } ORDER BY ?rdo LIMIT 5000 offset $offset
-      } 
+def get_collected_data_objects(collection_uri):
+    """Return the URIs of all collected remote data objects in a collection.
+
+    Uses keyset pagination (advancing a FILTER boundary) rather than OFFSET, which
+    runs into Virtuoso's sorted-top-rows limit once the offset grows large.
+    """
+    uris = []
+    page_size = 5000
+    last = ""
+    query_template = Template("""
+    PREFIX    adms: <http://www.w3.org/ns/adms#>
+    PREFIX    dct: <http://purl.org/dc/terms/>
+    SELECT DISTINCT ?rdo WHERE {
+      GRAPH $graph {
+        $collection dct:hasPart ?rdo.
+        ?rdo adms:status $status_collected.
+        FILTER(STR(?rdo) > $last)
+      }
+    } ORDER BY ?rdo LIMIT $limit
     """)
-        while offset < number_of_files:
-            query_s = query_template.substitute(
-                graph = sparql_escape_uri(DEFAULT_GRAPH),
-                result_container = sparql_escape_uri(results_container),
-                status_collected = sparql_escape_uri(FILE_STATUSES['COLLECTED']),
-                collection = sparql_escape_uri(collection_uri),
-                offset = offset
-            )
-            update_sudo(query_s)
-            offset = offset + 5000
+    while True:
+        query_s = query_template.substitute(
+            graph = sparql_escape_uri(DEFAULT_GRAPH),
+            status_collected = sparql_escape_uri(FILE_STATUSES['COLLECTED']),
+            collection = sparql_escape_uri(collection_uri),
+            last = sparql_escape_string(last),
+            limit = page_size
+        )
+        results = query_sudo(query_s)
+        bindings = results["results"]["bindings"]
+        for b in bindings:
+            uris.append(b["rdo"]["value"])
+        if len(bindings) < page_size:
+            break
+        last = uris[-1]
+    return uris
+
+def copy_files_to_results_container(collection_uri, results_container):
+    # Read the data objects first and link them with plain `INSERT DATA` batches;
+    # a combined `INSERT ... WHERE { SELECT ... ORDER BY ... LIMIT ... OFFSET }` runs
+    # into Virtuoso's sorted-top-rows limit on large collections.
+    rdos = get_collected_data_objects(collection_uri)
+    batch_size = 1000
+    query_template = Template("""
+    PREFIX    task: <http://redpencil.data.gift/vocabularies/tasks/>
+    INSERT DATA {
+      GRAPH $graph { $result_container task:hasFile $rdos. }
+    }
+    """)
+    for i in range(0, len(rdos), batch_size):
+        batch = rdos[i:i + batch_size]
+        rdos_str = ", ".join(sparql_escape_uri(rdo) for rdo in batch)
+        query_s = query_template.substitute(
+            graph = sparql_escape_uri(DEFAULT_GRAPH),
+            result_container = sparql_escape_uri(results_container),
+            rdos = rdos_str
+        )
+        update_sudo(query_s)
 
 def create_results_container(task_uri, collection_uri):
     create_container_query = Template("""

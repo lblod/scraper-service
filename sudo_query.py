@@ -47,7 +47,7 @@ def update_sudo(the_query, attempt=0, max_retries=5):
 
             logger.debug(f"query took {time.time() - start} seconds")
         except Exception as e:
-            logger.warn(f"Executing query failed unexpectedly. Stacktrace:", e)
+            logger.warning("Executing query failed unexpectedly. Stacktrace:", exc_info=True)
             if attempt <= max_retries:
                 wait_time = 0.6 * attempt + 30
                 logger.warn(f"Retrying after {wait_time} seconds [{attempt}/{max_retries}]")
