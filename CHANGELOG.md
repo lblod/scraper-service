@@ -6,6 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- added `/convert-failed-task` endpoint to recover a failed collecting task by linking already harvested files to its results container and marking the task success
 - reworked linking of harvested files to the results container (keyset-paginated reads + `INSERT DATA` batches) so it works on collections larger than 10.000 files; the previous `INSERT ... WHERE { SELECT ... ORDER BY LIMIT OFFSET }` hit Virtuoso's sorted-top-rows limit (`SR353`) once `OFFSET + LIMIT > 10000`, failing the harvest `close_spider` path
 - fixed `update_sudo` error logging that raised a secondary `TypeError` and masked the real query error
 - fixed tracking of failed_urls for scrape report

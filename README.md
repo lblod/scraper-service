@@ -75,6 +75,13 @@ The model of this service is compliant with the model of the [file-service](http
 ## Testing
 the service exposes an endpoint `/scrape` that you can `POST` to. the provided URL (query param `url`) is used as the start_url to scrape from.
 
+## Recovering a failed task
+The service exposes an endpoint `/convert-failed-task` that you can `POST` to with a task URI (query param `task`), e.g. `POST /convert-failed-task?task=http://data.lblod.info/id/tasks/...`.
+
+It fetches the task, verifies it is a `collecting` task in a **failed** state, links any already harvested files (the collected `nfo:RemoteDataObject`s in the harvesting collection) to the task's results container, and marks the task as **success**. An existing results container is reused; otherwise a new one is created. The request is rejected (`400`) if the task is not failed or if its harvesting collection contains no collected files, and returns `404` if the task does not exist.
+
+The parent job is not modified directly: as elsewhere in this service only the task status is updated, and the job-controller flips the job to success in reaction to the task-status delta.
+
 ## Things worth mentioning
 
 ### RDFa support

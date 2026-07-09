@@ -6,7 +6,7 @@ from escape_helpers import sparql_escape_uri, sparql_escape_datetime, sparql_esc
 from helpers import generate_uuid, logger
 from sudo_query import update_sudo, query_sudo
 
-from constants import SCRAPE_JOB_TYPE, RESOURCE_BASE, DEFAULT_GRAPH, TASK_STATUSES
+from constants import SCRAPE_JOB_TYPE, RESOURCE_BASE, DEFAULT_GRAPH, TASK_STATUSES, OPERATIONS
 
 ############################################################
 # TODO: keep this generic and extract into packaged module later
@@ -14,6 +14,16 @@ from constants import SCRAPE_JOB_TYPE, RESOURCE_BASE, DEFAULT_GRAPH, TASK_STATUS
 
 class TaskNotFoundException(Exception):
     "Raised when task is not found"
+    pass
+
+
+class TaskNotFailedException(Exception):
+    "Raised when a task is expected to be in a failed state but isn't"
+    pass
+
+
+class NoCollectedFilesException(Exception):
+    "Raised when a task's harvesting collection has no collected files"
     pass
 
 
@@ -137,3 +147,81 @@ def update_task_status (task, status, graph=DEFAULT_GRAPH):
         status=sparql_escape_uri(status)
     )
     update_sudo(query_string)
+
+
+def prepare_failed_task_conversion(task_uri):
+    """Validate that a failed collecting task can be converted to success and
+    ensure it has a results container.
+
+    Runs the cheap checks (task exists, is failed, is a collecting task, and its
+    harvesting collection has collected files) so the HTTP layer can report
+    errors synchronously. Returns a dict describing the task, its harvesting
+    collection and its (reused or freshly created) results container. The heavy
+    file linking is left to :func:`complete_failed_task_conversion`.
+    """
+    from .harvester import (
+        get_harvest_collection_for_task,
+        collection_has_collected_files,
+        get_results_container_for_task,
+        create_results_container,
+    )
+
+    task = load_task(task_uri)  # raises TaskNotFoundException
+
+    if task["status"] != TASK_STATUSES["FAILED"]:
+        raise TaskNotFailedException(
+            f"task {task_uri} is not in a failed state (status: {task['status']})"
+        )
+    if task["operation"] != OPERATIONS["COLLECTING"]:
+        raise Exception(
+            f"task {task_uri} is not a collecting task (operation: {task['operation']})"
+        )
+
+    collection = get_harvest_collection_for_task(task)
+    if not collection_has_collected_files(collection):
+        raise NoCollectedFilesException(
+            f"harvesting collection for task {task_uri} has no collected files to convert"
+        )
+
+    results_container = get_results_container_for_task(task_uri)
+    if results_container is None:
+        results_container = create_results_container(task_uri, collection)
+
+    return {
+        "task": task_uri,
+        "job": task["job"],
+        "job_id": task["job_id"],
+        "collection": collection,
+        "results_container": results_container,
+    }
+
+
+def complete_failed_task_conversion(task_uri, collection, results_container):
+    """Link the collection's harvested files to the results container and mark
+    the task as success.
+
+    This is the heavy part of the conversion (potentially tens of thousands of
+    files, in batched SPARQL updates with retries) and is meant to run in a
+    background process, off the request thread. The parent job is intentionally
+    left untouched: this service only manages task status and relies on the
+    job-controller to flip the job via the task-status delta.
+
+    On failure the task is left in its failed state, so the conversion can be
+    safely retried (file linking is idempotent).
+    """
+    from .harvester import (
+        copy_files_to_results_container,
+        count_number_of_files_in_collection,
+    )
+
+    try:
+        copy_files_to_results_container(collection, results_container)
+        files_linked = count_number_of_files_in_collection(collection)
+        update_task_status(task_uri, TASK_STATUSES["SUCCESS"])
+        logger.info(
+            f"converted failed task {task_uri} to success ({files_linked} files linked)"
+        )
+    except Exception as e:
+        logger.error(f"failed to convert task {task_uri} to success, leaving it failed")
+        logger.error(e)
+        raise

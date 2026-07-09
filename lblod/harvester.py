@@ -402,6 +402,28 @@ def get_harvest_collection_for_task(task, graph = DEFAULT_GRAPH):
         raise Exception(f"Unexpected result {results}")
 
 
+def get_results_container_for_task(task_uri, graph = DEFAULT_GRAPH):
+    query_template = Template("""
+    PREFIX task: <http://redpencil.data.gift/vocabularies/tasks/>
+    SELECT ?container
+    WHERE {
+      GRAPH $graph {
+        $task task:resultsContainer ?container.
+      }
+    }
+    """)
+    query_s = query_template.substitute(
+        graph = sparql_escape_uri(graph),
+        task = sparql_escape_uri(task_uri)
+    )
+    results = query_sudo(query_s)
+    bindings = results["results"]["bindings"]
+    if len(bindings) == 0:
+        return None
+    else:
+        return bindings[0]["container"]["value"]
+
+
 def collection_has_collected_files(collection):
     query_template = Template("""
     PREFIX    dct: <http://purl.org/dc/terms/>

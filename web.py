@@ -10,7 +10,7 @@ from apscheduler.triggers.cron import CronTrigger
 from scrapy.crawler import CrawlerProcess
 from scrapy.utils.project import get_project_settings
 from lblod.spiders.lblod import LBLODSpider
-from lblod.job import load_task, update_task_status, TaskNotFoundException, fail_busy_and_scheduled_tasks
+from lblod.job import load_task, update_task_status, TaskNotFoundException, TaskNotFailedException, NoCollectedFilesException, prepare_failed_task_conversion, complete_failed_task_conversion, fail_busy_and_scheduled_tasks
 from lblod.harvester import get_harvest_collection_for_task, get_initial_remote_data_object
 from helpers import logger, generate_uuid
 from constants import OPERATIONS, TASK_STATUSES, RESOURCE_BASE
@@ -32,6 +32,11 @@ def run_spider(spider, **kwargs):
     process = Process(target=_run)
     process.start()
     return process
+
+def run_in_background(target, *args, **kwargs):
+    process = Process(target=target, args=args, kwargs=kwargs)
+    process.start()
+    return process
 @app.route("/scrape", methods=["POST"])
 def scrape():
     if "url" in request.args:
@@ -43,6 +48,35 @@ def scrape():
         return jsonify({"message": "Scraping started", "job_id": job_id})
     else:
         return jsonify({"error": "URL parameter is missing"})
+
+@app.route("/convert-failed-task", methods=["POST"])
+def convert_failed_task():
+    task_uri = request.args.get("task")
+    if not task_uri:
+        return jsonify({"error": "task parameter is missing"}), 400
+    try:
+        prepared = prepare_failed_task_conversion(task_uri)
+    except TaskNotFoundException:
+        return jsonify({"error": f"task not found: {task_uri}"}), 404
+    except (TaskNotFailedException, NoCollectedFilesException) as e:
+        return jsonify({"error": str(e)}), 400
+
+    # Linking the harvested files can involve tens of thousands of files and
+    # long-running batched SPARQL updates, so run it off the request thread
+    # (like /scrape). The task is only flipped to success once linking succeeds.
+    run_in_background(
+        complete_failed_task_conversion,
+        prepared["task"],
+        prepared["collection"],
+        prepared["results_container"],
+    )
+    return jsonify({
+        "message": "Conversion started, task will be marked success once files are linked",
+        "task": prepared["task"],
+        "job": prepared["job"],
+        "job_id": prepared["job_id"],
+        "results_container": prepared["results_container"],
+    }), 202
 
 @app.route("/delta", methods=["POST"])
 def delta_handler():
